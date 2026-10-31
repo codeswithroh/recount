@@ -194,8 +194,12 @@ async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: C
   if (failure) throw new OtariError(failure, 502);
   const response = final as { output?: ResponseItem[]; usage?: { cost_usd?: string; estimated_cost?: number } } | null;
   const output = response?.output ?? items;
-  // A dropped stream still counts if the final answer arrived. Only the cost figure is lost.
-  if (!response && !items.some((item) => item.type === "message" && item.content?.some((part) => part.text?.includes("{"))))
+  // After a run of tool calls the hosted stream can close with no final event. Sandbox output that
+  // already arrived is still good, so keep it. Only the cost figure and the closing message are lost.
+  const usable = items.some((item) =>
+    item.outputs?.some((out) => /^(RESULT|ALT)\s/m.test(out.logs ?? "")) || item.content?.some((part) => part.text?.includes("{")),
+  );
+  if (!response && !usable)
     throw new OtariError(`stream ended after ${lastEvent || "no events"}`, 502);
 
   return {

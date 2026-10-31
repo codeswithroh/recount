@@ -37,7 +37,7 @@ Keep the number as stated: for "1.4 billion" use 1.4 with unit "billion".`;
 const RECOMPUTE_PROMPT = `You recalculate a published statistic from its primary source.
 1. Find the official dataset. Use the data tools first, then web search if available.
 2. Write one self-contained Python script that downloads the data itself from a public URL (the data tools return a source_url you can use), computes the figure in the claim's unit and scale, and prints a last line of exactly: RESULT <number>, unrounded
-3. Run it with code execution, printing the unrounded value. Fix it until it works. A script with data values typed into it is rejected. Never guess.
+3. Run it with code execution, printing the unrounded value. Keep it short: three script runs at most, and stop as soon as RESULT prints. A script with data values typed into it is rejected. Never guess.
 Answer with JSON only:
 {"found_data": boolean, "dataset_title": "", "data_url": "", "method": "one sentence about your last script", "unit": "", "notes": "caveats, one sentence"}
 If no primary data exists, set found_data to false.`;
@@ -60,6 +60,32 @@ const alternativesFrom = (runs: CodeRun[]) =>
   [...runs.map((run) => run.logs).join("\n").matchAll(/^ALT\s+(.+?)\s*=\s*(-?[\d.]+(?:e[+-]?\d+)?)\s*$/gim)].map(
     ([, label, value]) => ({ label, value: Number(value) }),
   );
+
+// A dropped stream can lose the closing JSON while the sandbox output survives.
+const reportFrom = (text: string, run: CodeRun | undefined, claim: Claim): Omit<Analysis, "script" | "value" | "stdout"> => {
+  try {
+    return parseJson(text);
+  } catch {
+    if (!run) throw new Error("model did not return JSON");
+    const data_url = run.code.match(/https?:\/\/[^\s"']+/)?.[0] ?? "";
+    return {
+      found_data: true,
+      dataset_title: new URL(data_url).hostname,
+      data_url,
+      method: "Read from the script below.",
+      unit: claim.unit,
+      notes: "",
+    };
+  }
+};
+
+const reviewFrom = (text: string): Pick<Challenge, "definition_match" | "objections"> => {
+  try {
+    return parseJson(text);
+  } catch {
+    return { objections: [] };
+  }
+};
 
 class OverBudget extends Error {}
 class OverTime extends Error {}
@@ -160,8 +186,8 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
     let worked = await recompute("");
     if (!worked.codeRuns.some(usable))
       worked = await recompute("\nYour last script did not download its data from a URL. Do that this time.");
-    const report = parseJson<Omit<Analysis, "script" | "value" | "stdout">>(worked.content);
     const lastRun = [...worked.codeRuns].reverse().find(usable);
+    const report = reportFrom(worked.content, lastRun, recount.claim);
     recount.analysis = {
       ...report,
       found_data: report.found_data && Boolean(lastRun),
@@ -190,7 +216,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
           deadline,
         }),
       );
-      const review = parseJson<Pick<Challenge, "definition_match" | "objections">>(challenged.content);
+      const review = reviewFrom(challenged.content);
       recount.challenge = {
         definition_match: review.definition_match,
         objections: review.objections ?? [],
