@@ -12,6 +12,8 @@ export async function GET() {
       models: models(),
       budgetUsd: Number(process.env.RECOUNT_BUDGET_USD || 0.25),
       canRun: Boolean(process.env.OTARI_API_KEY),
+      needsCode: Boolean(process.env.RECOUNT_ACCESS_CODE),
+      guardrail: Boolean(process.env.OTARI_GUARDRAIL_URL),
       mcp: Boolean(process.env.OTARI_MCP_URL),
       web: process.env.OTARI_WEB_TOOLS === "1",
     },
@@ -19,7 +21,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { input } = (await request.json()) as { input?: string };
+  const { input, code } = (await request.json()) as { input?: string; code?: string };
+  const required = process.env.RECOUNT_ACCESS_CODE;
+  if (required && code !== required) return Response.json({ error: "Wrong access code." }, { status: 401 });
   const text = input?.trim();
   if (!text) return Response.json({ error: "Paste a claim or a URL." }, { status: 400 });
   if (text.length > 2000) return Response.json({ error: "Keep it under 2,000 characters." }, { status: 400 });

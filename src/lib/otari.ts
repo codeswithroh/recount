@@ -10,6 +10,9 @@ export class OtariError extends Error {
   get isBudget() {
     return this.status === 402 || /budget|spend|ceiling/i.test(this.message);
   }
+  get isGuardrail() {
+    return this.status === 403 && /guardrail/i.test(this.message);
+  }
 }
 
 export type ChatResult = {
@@ -29,6 +32,7 @@ export type ChatRequest = {
   user: string;
   tools?: Record<string, unknown>[];
   mcpServers?: Record<string, unknown>[];
+  guardrails?: Record<string, unknown>[];
   maxTokens?: number;
 };
 
@@ -56,6 +60,7 @@ export async function chat(req: ChatRequest): Promise<ChatResult> {
       ],
       ...(req.tools?.length ? { tools: req.tools } : {}),
       ...(req.mcpServers?.length ? { mcp_servers: req.mcpServers } : {}),
+      ...(req.guardrails?.length ? { guardrails: req.guardrails } : {}),
     }),
   });
 

@@ -9,6 +9,8 @@ type Config = {
   models: { extractor: string; analyst: string; skeptic: string };
   budgetUsd: number;
   canRun: boolean;
+  needsCode: boolean;
+  guardrail: boolean;
   mcp: boolean;
   web: boolean;
 };
@@ -39,6 +41,7 @@ export function Dashboard() {
   const [loadError, setLoadError] = useState("");
   const [view, setView] = useState<View>("Overview");
   const [input, setInput] = useState("");
+  const [code, setCode] = useState("");
   const [live, setLive] = useState<Live | null>(null);
   const [runError, setRunError] = useState("");
   const [open, setOpen] = useState<Recount | null>(null);
@@ -66,7 +69,7 @@ export function Dashboard() {
       const res = await fetch("/api/recounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: text }),
+        body: JSON.stringify({ input: text, code }),
       });
       if (!res.ok || !res.body) {
         const body = await res.json().catch(() => null);
@@ -159,6 +162,16 @@ export function Dashboard() {
                     aria-label="Claim or URL"
                     className="min-w-0 flex-1 rounded-xl border border-line bg-bg px-4 py-3 outline-none focus:border-accent"
                   />
+                  {config?.needsCode && (
+                    <input
+                      value={code}
+                      onChange={(event) => setCode(event.target.value)}
+                      disabled={Boolean(live)}
+                      placeholder="Access code"
+                      aria-label="Access code"
+                      className="rounded-xl border border-line bg-bg px-4 py-3 outline-none focus:border-accent sm:w-36"
+                    />
+                  )}
                   <button
                     disabled={Boolean(live) || !input.trim() || config?.canRun === false}
                     className="rounded-xl bg-accent px-6 py-3 font-semibold text-white disabled:opacity-40"
@@ -366,6 +379,7 @@ function System({ config, recounts }: { config: Config; recounts: Recount[] }) {
     ["Code execution", true],
     ["MCP data server", config.mcp],
     ["Web search and fetch", config.web],
+    ["Prompt-injection guardrail", config.guardrail],
     ["Hard budget per recount", true],
   ];
   return (

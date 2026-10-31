@@ -23,6 +23,11 @@ const dataServers = () =>
       ]
     : [];
 
+const guardrails = () =>
+  process.env.OTARI_GUARDRAIL_URL
+    ? [{ profile: "prompt-injection", mode: "block", url: process.env.OTARI_GUARDRAIL_URL }]
+    : [];
+
 const EXTRACT_PROMPT = `You pull the single checkable statistic out of a piece of text.
 If the input is a URL, fetch it and pick its most prominent statistic.
 Answer with JSON only:
@@ -108,13 +113,14 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
 
   try {
     const isUrl = /^https?:\/\//i.test(input.trim());
-    const extracted = await stage("extract", "Extractor", extractor, isUrl ? ["web fetch"] : [], () =>
+    const extracted = await stage("extract", "Extractor", extractor, [...(isUrl ? ["web fetch"] : []), ...(guardrails().length ? ["guardrail"] : [])], () =>
       chat({
         model: extractor,
         system: EXTRACT_PROMPT,
         user: input,
         maxTokens: 800,
-        tools: isUrl ? [{ type: "otari_web_fetch", max_uses: 2 }] : [],
+        tools: isUrl ? [{ type: "otari_web_fetch" }] : [],
+        guardrails: guardrails(),
       }),
     );
     recount.claim = parseJson<Claim>(extracted.content);
@@ -135,7 +141,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
             tools: web
               ? [
                   { type: "otari_web_search", max_uses: 3 },
-                  { type: "otari_web_fetch", max_uses: 3 },
+                  { type: "otari_web_fetch" },
                 ]
               : [],
           }),
@@ -183,7 +189,10 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
 
     Object.assign(recount, decideVerdict(recount.claim, recount.analysis, recount.challenge));
   } catch (error) {
-    if (error instanceof OverBudget || (error instanceof OtariError && error.isBudget)) {
+    if (error instanceof OtariError && error.isGuardrail) {
+      recount.status = "blocked";
+      recount.reason = "Otari refused this input before any model read it: it contains instructions for the pipeline.";
+    } else if (error instanceof OverBudget || (error instanceof OtariError && error.isBudget)) {
       recount.status = "over_budget";
       recount.reason = `Stopped at the $${recount.budgetUsd.toFixed(2)} cap.`;
     } else {

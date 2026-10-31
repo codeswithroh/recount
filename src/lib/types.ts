@@ -49,7 +49,7 @@ export type Recount = {
   id: string;
   createdAt: string;
   input: string;
-  status: "done" | "failed" | "over_budget";
+  status: "done" | "failed" | "over_budget" | "blocked";
   verdict: Verdict | null;
   reason: string;
   claim: Claim | null;
