@@ -43,7 +43,7 @@ export default function Landing() {
           >
             Recount a claim
           </Link>
-          <p className="mt-3 text-sm text-muted">About 6 cents a claim on open-weight models.</p>
+          <p className="mt-3 text-sm text-muted">About 5 cents a claim on open-weight models.</p>
         </div>
 
         {example && (

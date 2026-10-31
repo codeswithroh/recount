@@ -18,7 +18,7 @@ In May 2025 Akinwumi Adesina, then AfDB president, said Nigeria's GDP per capita
 | Presidency | GDP $4.2 billion in 1960 | $4.196 billion | Reproduced |
 | Peter Obi, March 2026 | Nigeria's nominal GDP about $250 billion | $252.3 billion | Reproduced |
 
-Same country, same year, a 16-fold gap between current and constant dollars. Each run cost $0.02 to $0.16, about 6 cents on average.
+Same country, same year, a 16-fold gap between current and constant dollars. Each run cost $0.02 to $0.12, about 5 cents on average.
 
 ## How a recount works
 
