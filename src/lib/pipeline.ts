@@ -32,7 +32,7 @@ const EXTRACT_PROMPT = `You pull the single checkable statistic out of a piece o
 If the input is a URL, fetch it and pick its most prominent statistic.
 Answer with JSON only:
 {"statement": "the claim in one sentence", "claimed_value": number or null, "approximate": true if hedged with about, roughly, nearly or similar, "unit": "%, percentage points, million people, USD...", "metric": "what is measured, with no figures", "geography": "", "period": "", "source_hint": "who the text credits for the number, or empty"}
-Keep the number as stated: for "1.4 billion" use 1.4 with unit "billion".`;
+Keep the number as stated: for "1.4 billion" use 1.4 with unit "billion". For "$10,700" use 10700 with unit "USD".`;
 
 const RECOMPUTE_PROMPT = `You measure a statistic from its primary source.
 1. Find the official dataset. Use the data tools first, then web search if available. If the claim doesn't state a basis, use the headline series (GDP per capita means current US$, not PPP). 
