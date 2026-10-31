@@ -43,8 +43,25 @@ export type ChatRequest = {
 // The hosted gateway's WAF returns a bare 403 for backticked function calls (mozilla-ai/otari#2704).
 const stripBackticks = (text: string) => text.replaceAll("`", "'");
 
+// Single-provider models have no backup, so a passing 5xx or cut connection is tried again here.
+const canRetry = (error: unknown) =>
+  error instanceof TypeError || (error instanceof OtariError && (error.isDroppedStream || error.status >= 500));
+
+async function withRetries<T>(req: ChatRequest, call: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await call();
+    } catch (error) {
+      const outOfTime = req.deadline !== undefined && req.deadline - Date.now() < 15_000;
+      if (!canRetry(error) || attempt === 3 || outOfTime) throw error;
+    }
+  }
+}
+
+export const chat = (req: ChatRequest) => withRetries(req, () => chatOnce(req));
+
 // Always streamed: the CDN cuts non-streamed tool loops at about 60s (mozilla-ai/otari#2692).
-export async function chat(req: ChatRequest): Promise<ChatResult> {
+async function chatOnce(req: ChatRequest): Promise<ChatResult> {
   const key = process.env.OTARI_API_KEY;
   if (!key) throw new OtariError("OTARI_API_KEY is not set", 500);
 
@@ -124,16 +141,7 @@ type ResponseItem = {
 
 // Chat Completions hides code execution. Responses returns the code and raw stdout of every
 // sandbox call, so verdict numbers can be read from the sandbox instead of a model's prose.
-export async function respond(req: ChatRequest): Promise<ChatResult & { codeRuns: CodeRun[] }> {
-  // The hosted stream sometimes closes before its final event.
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await respondOnce(req);
-    } catch (error) {
-      if (!(error instanceof OtariError && error.isDroppedStream) || attempt === 3) throw error;
-    }
-  }
-}
+export const respond = (req: ChatRequest) => withRetries(req, () => respondOnce(req));
 
 async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: CodeRun[] }> {
   const key = process.env.OTARI_API_KEY;
