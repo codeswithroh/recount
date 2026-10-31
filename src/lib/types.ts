@@ -5,6 +5,7 @@ export type StageName = "extract" | "recompute" | "replay" | "challenge";
 export type Claim = {
   statement: string;
   claimed_value: number | null;
+  approximate?: boolean;
   unit: string;
   metric: string;
   geography: string;

@@ -43,3 +43,11 @@ test("no data, no replay, or an edited replay is unverifiable", () => {
   assert.equal(verdict(analysis, { ...challenge, rerun_value: 3 }), "unverifiable");
   assert.equal(verdict(analysis, { ...challenge, rerun_identical: false }), "unverifiable");
 });
+
+test("a hedged claim gets a wider margin", () => {
+  const measured = { ...analysis, value: 2593.4 };
+  const rerun = { ...challenge, rerun_value: 2593.4 };
+  const hedged = { ...claim, claimed_value: 2700, approximate: true };
+  assert.equal(verdict(measured, rerun, hedged), "reproduced");
+  assert.equal(verdict(measured, rerun, { ...hedged, approximate: false }), "wrong");
+});

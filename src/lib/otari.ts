@@ -10,6 +10,9 @@ export class OtariError extends Error {
   get isBudget() {
     return this.status === 402 || /budget|spend|ceiling/i.test(this.message);
   }
+  get isDroppedStream() {
+    return this.message.startsWith("stream ended");
+  }
   get isGuardrail() {
     return this.status === 403 && /guardrail/i.test(this.message);
   }
@@ -121,6 +124,16 @@ type ResponseItem = {
 // Chat Completions hides code execution. Responses returns the code and raw stdout of every
 // sandbox call, so verdict numbers can be read from the sandbox instead of a model's prose.
 export async function respond(req: ChatRequest): Promise<ChatResult & { codeRuns: CodeRun[] }> {
+  try {
+    return await respondOnce(req);
+  } catch (error) {
+    // The hosted stream sometimes closes before its final event, usually under concurrent load.
+    if (error instanceof OtariError && error.isDroppedStream) return respondOnce(req);
+    throw error;
+  }
+}
+
+async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: CodeRun[] }> {
   const key = process.env.OTARI_API_KEY;
   if (!key) throw new OtariError("OTARI_API_KEY is not set", 500);
 
@@ -153,12 +166,14 @@ export async function respond(req: ChatRequest): Promise<ChatResult & { codeRuns
 
   let final: { output?: ResponseItem[]; usage?: { cost_usd?: string; estimated_cost?: number } } | null = null;
   let failure = "";
+  let lastEvent = "";
   let buffer = "";
   const decoder = new TextDecoder();
 
   const handleLine = (line: string) => {
     if (!line.startsWith("data: ") || line === "data: [DONE]") return;
     const event = JSON.parse(line.slice(6));
+    lastEvent = event.type ?? lastEvent;
     if (event.type === "response.completed" || event.type === "response.incomplete") final = event.response;
     if (event.type === "response.failed" || event.type === "error")
       failure = event.response?.error?.message ?? event.message ?? "stream failed";
@@ -174,7 +189,7 @@ export async function respond(req: ChatRequest): Promise<ChatResult & { codeRuns
 
   if (failure) throw new OtariError(failure, 502);
   const response = final as { output?: ResponseItem[]; usage?: { cost_usd?: string; estimated_cost?: number } } | null;
-  if (!response) throw new OtariError("stream ended without a response", 502);
+  if (!response) throw new OtariError(`stream ended after ${lastEvent || "no events"}`, 502);
 
   const output = response.output ?? [];
   return {

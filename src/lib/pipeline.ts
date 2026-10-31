@@ -31,7 +31,7 @@ const guardrails = () =>
 const EXTRACT_PROMPT = `You pull the single checkable statistic out of a piece of text.
 If the input is a URL, fetch it and pick its most prominent statistic.
 Answer with JSON only:
-{"statement": "the claim in one sentence", "claimed_value": number or null, "unit": "%, percentage points, million people, USD...", "metric": "what is measured", "geography": "", "period": "", "source_hint": "who the text credits for the number, or empty"}
+{"statement": "the claim in one sentence", "claimed_value": number or null, "approximate": true if hedged with about, roughly, nearly or similar, "unit": "%, percentage points, million people, USD...", "metric": "what is measured", "geography": "", "period": "", "source_hint": "who the text credits for the number, or empty"}
 Keep the number as stated: for "1.4 billion" use 1.4 with unit "billion".`;
 
 const RECOMPUTE_PROMPT = `You recalculate a published statistic from its primary source.
