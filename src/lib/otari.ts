@@ -68,7 +68,8 @@ export async function chat(req: ChatRequest): Promise<ChatResult> {
     const text = await res.text();
     let detail = text.slice(0, 300);
     try {
-      detail = JSON.parse(text).detail ?? detail;
+      const parsed = JSON.parse(text).detail ?? detail;
+      detail = typeof parsed === "string" ? parsed : (parsed.message ?? text);
     } catch {}
     throw new OtariError(String(detail), res.status);
   }
@@ -144,7 +145,8 @@ export async function respond(req: ChatRequest): Promise<ChatResult & { codeRuns
     const text = await res.text();
     let detail = text.slice(0, 300);
     try {
-      detail = JSON.parse(text).detail ?? detail;
+      const parsed = JSON.parse(text).detail ?? detail;
+      detail = typeof parsed === "string" ? parsed : (parsed.message ?? text);
     } catch {}
     throw new OtariError(String(detail), res.status);
   }
