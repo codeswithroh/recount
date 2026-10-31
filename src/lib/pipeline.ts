@@ -31,11 +31,11 @@ const guardrails = () =>
 const EXTRACT_PROMPT = `You pull the single checkable statistic out of a piece of text.
 If the input is a URL, fetch it and pick its most prominent statistic.
 Answer with JSON only:
-{"statement": "the claim in one sentence", "claimed_value": number or null, "approximate": true if hedged with about, roughly, nearly or similar, "unit": "%, percentage points, million people, USD...", "metric": "what is measured", "geography": "", "period": "", "source_hint": "who the text credits for the number, or empty"}
+{"statement": "the claim in one sentence", "claimed_value": number or null, "approximate": true if hedged with about, roughly, nearly or similar, "unit": "%, percentage points, million people, USD...", "metric": "what is measured, with no figures", "geography": "", "period": "", "source_hint": "who the text credits for the number, or empty"}
 Keep the number as stated: for "1.4 billion" use 1.4 with unit "billion".`;
 
-const RECOMPUTE_PROMPT = `You recalculate a published statistic from its primary source.
-1. Find the official dataset. Use the data tools first, then web search if available. If the claim doesn't state a basis, use the headline series (GDP per capita means current US$, not PPP). Never pick a series because it agrees with the claim.
+const RECOMPUTE_PROMPT = `You measure a statistic from its primary source.
+1. Find the official dataset. Use the data tools first, then web search if available. If the claim doesn't state a basis, use the headline series (GDP per capita means current US$, not PPP). 
 2. Write one self-contained Python script that downloads the data itself from a public URL (the data tools return a source_url you can use), computes the figure in the claim's unit and scale, and prints a last line of exactly: RESULT <number>, unrounded
 3. Run it with code execution, printing the unrounded value. Keep it short: three script runs at most, and stop as soon as RESULT prints. A script with data values typed into it is rejected. Never guess.
 Answer with JSON only:
@@ -160,6 +160,9 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
     );
     recount.claim = parseJson<Claim>(extracted.content);
 
+    // The analyst never sees the claimed number, so it can't shop for a series that agrees.
+    const { metric, unit, geography, period } = recount.claim;
+    const blind = { metric, unit, geography, period };
     const recompute = (extra: string) =>
       stage(
         "recompute",
@@ -170,7 +173,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
           respond({
             model: analyst,
             system: RECOMPUTE_PROMPT,
-            user: `Claim: ${JSON.stringify(recount.claim)}${extra}`,
+            user: `Measure: ${JSON.stringify(blind)}${extra}`,
             maxTokens: 4000,
             deadline,
             mcpServers: servers,
