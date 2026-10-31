@@ -74,4 +74,4 @@ npm test
 - Results are stored in a local JSON file. Hosted copies show the seeded runs and can't save new ones.
 - Otari's stream can close after several tool calls without a final event. Recount keeps the sandbox output, but that call's cost shows as $0.
 - The public deploy needs an access code to run, because each run spends real credits. `RECOUNT_ACCESS_CODE` sets it.
-- The analyst uses the headline series when a claim doesn't state its basis. Two earlier seeded runs predate blind analysis: nothing about their numbers changes, but they were not run blind.
+- The analyst uses the headline series when a claim doesn't state its basis. Six of the nine seeded runs predate blind analysis, so the analyst saw the claimed number in those.
