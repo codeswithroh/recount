@@ -247,17 +247,17 @@
   "budgetUsd": 0.25
  },
  {
-  "id": "013edc6e",
-  "createdAt": "2026-10-31T13:33:29.709Z",
+  "id": "4f5181fb",
+  "createdAt": "2026-10-31T13:41:39.835Z",
   "input": "Test claim: India's GDP per capita was about $10,700 in 2024.",
   "status": "done",
   "verdict": "misleading",
-  "reason": "Only holds under one reading: GDP per capita, PPP (current international $).",
+  "reason": "Only holds under one reading: PPP.",
   "claim": {
    "statement": "India's GDP per capita was about $10,700 in 2024.",
-   "claimed_value": 10.7,
+   "claimed_value": 10700,
    "approximate": true,
-   "unit": "thousand USD",
+   "unit": "USD",
    "metric": "GDP per capita",
    "geography": "India",
    "period": "2024",
@@ -265,34 +265,38 @@
   },
   "analysis": {
    "found_data": true,
-   "dataset_title": "GDP per capita, PPP (current international $)",
-   "data_url": "https://api.worldbank.org/v2/country/IN/indicator/NY.GDP.PCAP.PP.CD?format=json&per_page=200&date=2024",
-   "method": "Retrieved World Bank indicator NY.GDP.PCAP.PP.CD (GDP per capita, PPP) for India in 2024 via API, yielding a value of approximately 10,718.59 current international dollars.",
-   "unit": "current international dollars (PPP)",
-   "notes": "The claimed value of ~$10,700 matches GDP per capita at purchasing power parity (PPP), not nominal GDP per capita (which is ~$2,592 in current US$ for 2024). The claim did not specify PPP, but the figure aligns with that measure.",
-   "script": "\nimport json\nimport urllib.request\n\nurl = \"https://api.worldbank.org/v2/country/IN/indicator/NY.GDP.PCAP.CD?format=json&per_page=200&date=2024\"\nwith urllib.request.urlopen(url) as response:\n    data = json.loads(response.read())\n\n# The API returns a list where the second element is the data array\nrows = data[1]\nif rows:\n    val = rows[0]['value']\n    print(f\"RESULT {val}\")\nelse:\n    print(\"No data\")\n",
+   "dataset_title": "GDP per capita (current US$) - World Bank",
+   "data_url": "https://api.worldbank.org/v2/country/IN/indicator/NY.GDP.PCAP.CD?format=json&per_page=200&date=2024",
+   "method": "Fetched World Bank indicator NY.GDP.PCAP.CD for India for 2024 via the API and extracted the value.",
+   "unit": "current US$",
+   "notes": "Value is 2591.99 current US$ for 2024.",
+   "script": "\nimport requests\n\nurl = \"https://api.worldbank.org/v2/country/IN/indicator/NY.GDP.PCAP.CD?format=json&per_page=200&date=2024\"\nresp = requests.get(url)\ndata = resp.json()\n\n# Navigate to the actual data\nvalue = data[1][0]['value']\nprint(f\"RESULT {value}\")\n",
    "value": 2591.9916607122,
    "stdout": "RESULT 2591.9916607122\n"
   },
   "challenge": {
    "definition_match": false,
    "objections": [
-    "Script uses PPP GDP per capita, but claim does not specify PPP basis."
+    "Claim likely refers to PPP US$, but script used current US$."
    ],
    "rerun_value": 2591.9916607122,
    "rerun_identical": true,
    "alternatives": [
     {
-     "label": "Nominal GDP per capita (current US$)",
-     "value": 2.59
+     "label": "current2024",
+     "value": 2591.9916607122
     },
     {
-     "label": "GDP per capita, PPP (current international $)",
-     "value": 10.72
+     "label": "constant2010",
+     "value": 2366.8328910323
     },
     {
-     "label": "GDP per capita (constant 2015 US$)",
-     "value": 2.37
+     "label": "PPP",
+     "value": 10718.5934040662
+    },
+    {
+     "label": "current2023",
+     "value": 2434.44826340989
     }
    ]
   },
@@ -305,8 +309,8 @@
     "provider": "deepinfra",
     "attempts": 1,
     "fallback": false,
-    "costUsd": 3e-05,
-    "durationMs": 2577,
+    "costUsd": 3.1e-05,
+    "durationMs": 1361,
     "tools": [
      "guardrail"
     ]
@@ -319,8 +323,8 @@
     "provider": "deepinfra",
     "attempts": 1,
     "fallback": false,
-    "costUsd": 0.012541,
-    "durationMs": 12547,
+    "costUsd": 0.011691,
+    "durationMs": 13177,
     "tools": [
      "code execution",
      "MCP"
@@ -334,8 +338,8 @@
     "provider": "deepinfra",
     "attempts": 1,
     "fallback": false,
-    "costUsd": 0.01006,
-    "durationMs": 3025,
+    "costUsd": 0.010047,
+    "durationMs": 3398,
     "tools": [
      "code execution"
     ]
@@ -348,14 +352,14 @@
     "provider": "deepinfra",
     "attempts": 1,
     "fallback": false,
-    "costUsd": 0.010277,
-    "durationMs": 46563,
+    "costUsd": 0.010181,
+    "durationMs": 28364,
     "tools": [
      "code execution"
     ]
    }
   ],
-  "costUsd": 0.032908,
+  "costUsd": 0.03195,
   "budgetUsd": 0.25
  },
  {
