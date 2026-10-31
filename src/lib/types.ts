@@ -27,7 +27,7 @@ export type Analysis = {
 export type Challenge = {
   rerun_value: number | null;
   rerun_identical: boolean;
-  definition_match: boolean;
+  definition_match?: boolean;
   alternatives: { label: string; value: number | null }[];
   objections: string[];
 };

@@ -1,0 +1,39 @@
+# Submission draft
+
+Reply on the existing email thread with marcus+wilding@mozilla.org before the deadline.
+
+- **Project:** Recount
+- **Otari.ai email:** rohitpurkait001@gmail.com
+- **One line:** Re-runs the maths behind published statistics and shows whether each number holds up, with the code attached.
+- **Repository:** TODO public GitHub URL
+- **Branch:** devs-wilding
+- **First Otari commit:** TODO repo URL/commit/ee0e525edd2c92c5ef582c090c344d6ff9fd987e
+- **PRs or issues on the Otari repo:** TODO
+- **Demo video:** TODO
+- **Feedback recording:** TODO, or use the written answers below
+
+## Otari features
+
+Working in the app now:
+- Code execution
+- MCP integration (World Bank and Eurostat)
+- Multiple models in distinct roles (extractor, analyst, skeptic)
+- Open-weight models: deepseek-v4-flash, deepseek-v4-pro, gpt-oss-120b
+
+Built in, but needs a dashboard setting before it counts:
+- Web search and fetch
+- Routing and fallbacks
+- Budgets and spending limits
+
+## Written feedback
+
+**When were you most tempted to skip Otari and call the provider directly?**
+When Chat Completions hid code execution. It returns only the model's final text, so I could not tell what the sandbox printed, and one model reported 2.51 when its script's output said 2.53. The Responses API returns the code and raw logs, which fixed it. I found that by trying each endpoint, because the same tool behaves differently across them.
+
+**What did you end up building yourself that Otari should've done for you?**
+- A per-run cost cap. Spend ceilings cover a key, not one job with several calls.
+- A check that a model used a tool. qwen3-coder answered without running code when given the tool, and there was no error to catch.
+- Handling for failures that arrive as HTML: a plain non-streamed Hello returned a CloudFront 504, not JSON.
+
+**If the rules hadn't required Otari, would you have continued using Otari? Why or why not?**
+TODO: your answer. Worth mentioning: one key across three labs' models, and sandboxed Python with pandas and network access at about a cent a call, saved real work here.

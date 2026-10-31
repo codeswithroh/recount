@@ -5,7 +5,7 @@ import { decideVerdict } from "./verdict";
 
 export const models = () => ({
   extractor: process.env.RECOUNT_MODEL_EXTRACTOR || "deepseek/deepseek-v4-flash",
-  analyst: process.env.RECOUNT_MODEL_ANALYST || "alibaba/qwen3-coder-480b-a35b-instruct",
+  analyst: process.env.RECOUNT_MODEL_ANALYST || "deepseek/deepseek-v4-pro",
   skeptic: process.env.RECOUNT_MODEL_SKEPTIC || "openai/gpt-oss-120b",
 });
 
@@ -31,7 +31,7 @@ Keep the number as stated: for "1.4 billion" use 1.4 with unit "billion".`;
 
 const RECOMPUTE_PROMPT = `You recalculate a published statistic from its primary source.
 1. Find the official dataset. Use the data tools first, then web search if available.
-2. Write one self-contained Python script that downloads the data itself from a public URL (the data tools return a source_url you can use), computes the figure in the claim's unit and scale, and prints a last line of exactly: RESULT <number>
+2. Write one self-contained Python script that downloads the data itself from a public URL (the data tools return a source_url you can use), computes the figure in the claim's unit and scale, and prints a last line of exactly: RESULT <number>, unrounded
 3. Run it with code execution, printing the unrounded value. Fix it until it works. A script with data values typed into it is rejected. Never guess.
 Answer with JSON only:
 {"found_data": boolean, "dataset_title": "", "data_url": "", "method": "one sentence", "unit": "", "notes": "caveats, one sentence"}
@@ -171,10 +171,13 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
       );
       const review = parseJson<Pick<Challenge, "definition_match" | "objections">>(challenged.content);
       recount.challenge = {
-        ...review,
+        definition_match: review.definition_match,
+        objections: review.objections ?? [],
         rerun_value: resultFrom(rerun),
         rerun_identical: rerun?.code.trim() === script.trim(),
-        alternatives: alternativesFrom(challenged.codeRuns),
+        alternatives: alternativesFrom(challenged.codeRuns).filter(
+          ({ value }) => Math.abs(value) <= Math.abs(recount.analysis?.value ?? 0) * 100,
+        ),
       };
     }
 

@@ -25,11 +25,11 @@ export function decideVerdict(
   if (!challenge.rerun_identical || drift > Math.abs(analysis.value) * 0.005)
     return { verdict: "unverifiable", reason: "Re-running the script gave a different number." };
 
-  const shown = `${Number(analysis.value.toPrecision(4))} ${analysis.unit}`.trim();
+  const shown = `${Number(analysis.value.toPrecision(4))} ${claim.unit}`.trim();
   if (matches(claimed, analysis.value)) {
-    return challenge.definition_match
-      ? { verdict: "reproduced", reason: `Source data gives ${shown}.` }
-      : { verdict: "misleading", reason: `The number matches, but measures something else.` };
+    return challenge.definition_match === false
+      ? { verdict: "misleading", reason: `The number matches, but measures something else.` }
+      : { verdict: "reproduced", reason: `Source data gives ${shown}.` };
   }
   const alternative = challenge.alternatives.find((alt) => matches(claimed, alt.value));
   if (alternative)
