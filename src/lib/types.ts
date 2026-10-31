@@ -1,6 +1,6 @@
 export type Verdict = "reproduced" | "misleading" | "wrong" | "unverifiable";
 
-export type StageName = "extract" | "recompute" | "challenge" | "verdict";
+export type StageName = "extract" | "recompute" | "replay" | "challenge";
 
 export type Claim = {
   statement: string;
@@ -18,6 +18,7 @@ export type Analysis = {
   data_url: string;
   method: string;
   script: string;
+  stdout: string;
   value: number | null;
   unit: string;
   notes: string;
@@ -25,6 +26,7 @@ export type Analysis = {
 
 export type Challenge = {
   rerun_value: number | null;
+  rerun_identical: boolean;
   definition_match: boolean;
   alternatives: { label: string; value: number | null }[];
   objections: string[];
@@ -61,5 +63,5 @@ export type Recount = {
 
 export type RecountEvent =
   | { type: "stage_start"; stage: StageName; role: string; model: string }
-  | { type: "stage_done"; run: StageRun; data?: unknown }
+  | { type: "stage_done"; run: StageRun }
   | { type: "done"; recount: Recount };

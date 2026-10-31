@@ -22,10 +22,10 @@ export function decideVerdict(
     return { verdict: "unverifiable", reason: "The script could not be re-run." };
 
   const drift = Math.abs(challenge.rerun_value - analysis.value);
-  if (drift > Math.abs(analysis.value) * 0.005)
+  if (!challenge.rerun_identical || drift > Math.abs(analysis.value) * 0.005)
     return { verdict: "unverifiable", reason: "Re-running the script gave a different number." };
 
-  const shown = `${analysis.value} ${analysis.unit}`.trim();
+  const shown = `${Number(analysis.value.toPrecision(4))} ${analysis.unit}`.trim();
   if (matches(claimed, analysis.value)) {
     return challenge.definition_match
       ? { verdict: "reproduced", reason: `Source data gives ${shown}.` }
