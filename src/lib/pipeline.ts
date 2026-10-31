@@ -35,7 +35,7 @@ Answer with JSON only:
 Keep the number as stated: for "1.4 billion" use 1.4 with unit "billion".`;
 
 const RECOMPUTE_PROMPT = `You recalculate a published statistic from its primary source.
-1. Find the official dataset. Use the data tools first, then web search if available.
+1. Find the official dataset. Use the data tools first, then web search if available. If the claim doesn't state a basis, use the headline series (GDP per capita means current US$, not PPP). Never pick a series because it agrees with the claim.
 2. Write one self-contained Python script that downloads the data itself from a public URL (the data tools return a source_url you can use), computes the figure in the claim's unit and scale, and prints a last line of exactly: RESULT <number>, unrounded
 3. Run it with code execution, printing the unrounded value. Keep it short: three script runs at most, and stop as soon as RESULT prints. A script with data values typed into it is rejected. Never guess.
 Answer with JSON only:
@@ -44,7 +44,7 @@ If no primary data exists, set found_data to false.`;
 
 const REPLAY_PROMPT = `Run the user's Python script once with code execution, copied character for character. Do not change, shorten or reformat it. Then answer with the word done.`;
 
-const CHALLENGE_PROMPT = `You are checking another analyst's recalculation. Assume it may be wrong.
+const CHALLENGE_PROMPT = `You are checking another analyst's recalculation. Assume it may be wrong. Judge the numbers only: who made the claim doesn't matter, and objections contain no figures.
 1. Decide if the script measures what the claim says. Set definition_match to false only if the claim's own wording points to a different population, geography, period or basis than the script used. Ordinary loose wording, such as income for GDP per capita, is true. Put caveats in objections.
 2. Always run one Python script that computes two or three other reasonable readings from the same source (constant dollars instead of current, another base year, another series), in the claim's unit, printing one line each: ALT <short label> = <number>
 Answer with JSON only:
@@ -219,7 +219,8 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
       const review = reviewFrom(challenged.content);
       recount.challenge = {
         definition_match: review.definition_match,
-        objections: review.objections ?? [],
+        // Figures come from the sandbox, so an objection quoting one from memory is dropped.
+        objections: (review.objections ?? []).filter((objection) => !/\d/.test(objection)),
         rerun_value: resultFrom(rerun),
         rerun_identical: Boolean(rerun && sameCode(rerun)),
         alternatives: alternativesFrom(challenged.codeRuns).filter(
