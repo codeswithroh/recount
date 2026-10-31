@@ -37,7 +37,7 @@ export type ChatRequest = {
   mcpServers?: Record<string, unknown>[];
   guardrails?: Record<string, unknown>[];
   maxTokens?: number;
-  timeoutMs?: number;
+  deadline?: number;
 };
 
 // The hosted gateway's WAF returns a bare 403 for backticked function calls (mozilla-ai/otari#2704).
@@ -52,7 +52,7 @@ export async function chat(req: ChatRequest): Promise<ChatResult> {
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: { "Otari-Key": key, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(req.timeoutMs ?? 280_000),
+    signal: AbortSignal.timeout(req.deadline ? req.deadline - Date.now() : 280_000),
     body: JSON.stringify({
       model: req.model,
       stream: true,
@@ -125,12 +125,13 @@ type ResponseItem = {
 // Chat Completions hides code execution. Responses returns the code and raw stdout of every
 // sandbox call, so verdict numbers can be read from the sandbox instead of a model's prose.
 export async function respond(req: ChatRequest): Promise<ChatResult & { codeRuns: CodeRun[] }> {
-  try {
-    return await respondOnce(req);
-  } catch (error) {
-    // The hosted stream sometimes closes before its final event, usually under concurrent load.
-    if (error instanceof OtariError && error.isDroppedStream) return respondOnce(req);
-    throw error;
+  // The hosted stream sometimes closes before its final event.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await respondOnce(req);
+    } catch (error) {
+      if (!(error instanceof OtariError && error.isDroppedStream) || attempt === 3) throw error;
+    }
   }
 }
 
@@ -142,7 +143,7 @@ async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: C
   const res = await fetch(`${BASE_URL}/responses`, {
     method: "POST",
     headers: { "Otari-Key": key, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(req.timeoutMs ?? 280_000),
+    signal: AbortSignal.timeout(req.deadline ? req.deadline - Date.now() : 280_000),
     body: JSON.stringify({
       model: req.model,
       stream: true,
@@ -166,6 +167,7 @@ async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: C
   }
 
   let final: { output?: ResponseItem[]; usage?: { cost_usd?: string; estimated_cost?: number } } | null = null;
+  const items: ResponseItem[] = [];
   let failure = "";
   let lastEvent = "";
   let buffer = "";
@@ -176,6 +178,7 @@ async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: C
     const event = JSON.parse(line.slice(6));
     lastEvent = event.type ?? lastEvent;
     if (event.type === "response.completed" || event.type === "response.incomplete") final = event.response;
+    if (event.type === "response.output_item.done") items.push(event.item);
     if (event.type === "response.failed" || event.type === "error")
       failure = event.response?.error?.message ?? event.message ?? "stream failed";
   };
@@ -190,9 +193,11 @@ async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: C
 
   if (failure) throw new OtariError(failure, 502);
   const response = final as { output?: ResponseItem[]; usage?: { cost_usd?: string; estimated_cost?: number } } | null;
-  if (!response) throw new OtariError(`stream ended after ${lastEvent || "no events"}`, 502);
+  const output = response?.output ?? items;
+  // A dropped stream still counts if the final answer arrived. Only the cost figure is lost.
+  if (!response && !items.some((item) => item.type === "message" && item.content?.some((part) => part.text?.includes("{"))))
+    throw new OtariError(`stream ended after ${lastEvent || "no events"}`, 502);
 
-  const output = response.output ?? [];
   return {
     content: output
       .flatMap((item) => item.content ?? [])
@@ -208,7 +213,7 @@ async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: C
     provider: res.headers.get("otari-provider") ?? "",
     attempts: Number(res.headers.get("otari-attempt-count") ?? 1),
     fallback: res.headers.get("otari-fallback") === "true",
-    costUsd: Number(response.usage?.cost_usd ?? response.usage?.estimated_cost ?? 0),
+    costUsd: Number(response?.usage?.cost_usd ?? response?.usage?.estimated_cost ?? 0),
     durationMs: Date.now() - started,
     webCalls: [],
   };

@@ -39,10 +39,10 @@ const RECOMPUTE_PROMPT = `You recalculate a published statistic from its primary
 2. Write one self-contained Python script that downloads the data itself from a public URL (the data tools return a source_url you can use), computes the figure in the claim's unit and scale, and prints a last line of exactly: RESULT <number>, unrounded
 3. Run it with code execution, printing the unrounded value. Fix it until it works. A script with data values typed into it is rejected. Never guess.
 Answer with JSON only:
-{"found_data": boolean, "dataset_title": "", "data_url": "", "method": "one sentence", "unit": "", "notes": "caveats, one sentence"}
+{"found_data": boolean, "dataset_title": "", "data_url": "", "method": "one sentence about your last script", "unit": "", "notes": "caveats, one sentence"}
 If no primary data exists, set found_data to false.`;
 
-const REPLAY_PROMPT = `Run the user's Python script once with code execution, exactly as given. Do not change it. Then answer with the word done.`;
+const REPLAY_PROMPT = `Run the user's Python script once with code execution, copied character for character. Do not change, shorten or reformat it. Then answer with the word done.`;
 
 const CHALLENGE_PROMPT = `You are checking another analyst's recalculation. Assume it may be wrong.
 1. Decide if the script measures what the claim says. Set definition_match to false only if the claim's own wording points to a different population, geography, period or basis than the script used. Ordinary loose wording, such as income for GDP per capita, is true. Put caveats in objections.
@@ -127,7 +127,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
         system: EXTRACT_PROMPT,
         user: input,
         maxTokens: 800,
-        timeoutMs: timeLeft(),
+        deadline,
         tools: isUrl ? [{ type: "otari_web_fetch" }] : [],
         guardrails: guardrails(),
       }),
@@ -146,7 +146,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
             system: RECOMPUTE_PROMPT,
             user: `Claim: ${JSON.stringify(recount.claim)}${extra}`,
             maxTokens: 4000,
-            timeoutMs: timeLeft(),
+            deadline,
             mcpServers: servers,
             tools: web
               ? [
@@ -172,10 +172,14 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
 
     if (recount.analysis.found_data) {
       const script = recount.analysis.script;
-      const replay = await stage("replay", "Replayer", extractor, ["code execution"], () =>
-        respond({ model: extractor, system: REPLAY_PROMPT, user: script, maxTokens: 3000, timeoutMs: timeLeft() }),
-      );
-      const rerun = replay.codeRuns.find((run) => run.code.trim() === script.trim()) ?? replay.codeRuns[0];
+      const sameCode = (run: CodeRun) => run.code.replace(/\s+/g, "") === script.replace(/\s+/g, "");
+      const replayOnce = () =>
+        stage("replay", "Replayer", extractor, ["code execution"], () =>
+          respond({ model: extractor, system: REPLAY_PROMPT, user: script, maxTokens: 3000, deadline }),
+        );
+      let replay = await replayOnce();
+      if (!replay.codeRuns.some(sameCode)) replay = await replayOnce();
+      const rerun = replay.codeRuns.find(sameCode) ?? replay.codeRuns[0];
 
       const challenged = await stage("challenge", "Skeptic", skeptic, ["code execution"], () =>
         respond({
@@ -183,7 +187,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
           system: CHALLENGE_PROMPT,
           user: `Claim: ${JSON.stringify(recount.claim)}\nAnalyst method: ${recount.analysis?.method}\nAnalyst script:\n${script}`,
           maxTokens: 4000,
-          timeoutMs: timeLeft(),
+          deadline,
         }),
       );
       const review = parseJson<Pick<Challenge, "definition_match" | "objections">>(challenged.content);
@@ -191,7 +195,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
         definition_match: review.definition_match,
         objections: review.objections ?? [],
         rerun_value: resultFrom(rerun),
-        rerun_identical: rerun?.code.trim() === script.trim(),
+        rerun_identical: Boolean(rerun && sameCode(rerun)),
         alternatives: alternativesFrom(challenged.codeRuns).filter(
           ({ value }) => Math.abs(value) <= Math.abs(recount.analysis?.value ?? 0) * 100,
         ),
