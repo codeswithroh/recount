@@ -6,6 +6,7 @@ import type { Recount } from "./types";
 const FILE = path.join(process.cwd(), "data", "recounts.json");
 
 async function readLocal(): Promise<Recount[]> {
+  if (process.env.VERCEL) return [];
   try {
     return JSON.parse(await fs.readFile(FILE, "utf8"));
   } catch {
