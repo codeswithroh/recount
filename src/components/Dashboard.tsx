@@ -77,9 +77,19 @@ export function Dashboard() {
       }
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let buffer = "";
+      let finished = false;
+      const lost = "The connection dropped before a verdict. Try again.";
       for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
+        // The server sends a heartbeat every 15s, so 45s of silence means the run is gone.
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const silence = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(lost)), 45_000);
+        });
+        const { value, done } = await Promise.race([reader.read(), silence]).finally(() => clearTimeout(timer));
+        if (done) {
+          if (!finished) throw new Error(lost);
+          break;
+        }
         buffer += value;
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
@@ -90,6 +100,7 @@ export function Dashboard() {
           if (event.type === "stage_done")
             setLive((state) => state && { ...state, active: null, done: [...state.done, event.run] });
           if (event.type === "done") {
+            finished = true;
             setRecounts((list) => [event.recount, ...list]);
             setOpen(event.recount);
             setInput("");
