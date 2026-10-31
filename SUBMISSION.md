@@ -5,9 +5,10 @@ Reply on the existing email thread with marcus+wilding@mozilla.org before the de
 - **Project:** Recount
 - **Otari.ai email:** rohitpurkait001@gmail.com
 - **One line:** Re-runs the maths behind published statistics and shows whether each number holds up, with the code attached.
-- **Repository:** TODO public GitHub URL
+- **Repository:** https://github.com/codeswithroh/recount
+- **Live app:** https://recount-xi.vercel.app (give judges the access code from `.env.local` by email, not in the repo)
 - **Branch:** devs-wilding
-- **First Otari commit:** TODO repo URL/commit/ee0e525edd2c92c5ef582c090c344d6ff9fd987e
+- **First Otari commit:** https://github.com/codeswithroh/recount/commit/ee0e525edd2c92c5ef582c090c344d6ff9fd987e
 - **PRs or issues on the Otari repo:** TODO
 - **Demo video:** TODO
 - **Feedback recording:** TODO, or use the written answers below
@@ -18,6 +19,7 @@ Working in the app now:
 - Code execution
 - MCP integration (World Bank and Eurostat)
 - Multiple models in distinct roles (extractor, analyst, skeptic)
+- Guardrails: Otari blocks injected input with a 403 through Recount's own service at /api/guardrail
 - Open-weight models: deepseek-v4-flash, deepseek-v4-pro, gpt-oss-120b
 
 Built in, but needs a dashboard setting before it counts:
@@ -34,6 +36,7 @@ When Chat Completions hid code execution. It returns only the model's final text
 - A per-run cost cap. Spend ceilings cover a key, not one job with several calls.
 - A check that a model used a tool. qwen3-coder answered without running code when given the tool, and there was no error to catch.
 - Handling for failures that arrive as HTML: a plain non-streamed Hello returned a CloudFront 504, not JSON.
+- Recovery for Responses streams that close after several tool calls with no response.completed, so no error and no cost figure.
 
 **If the rules hadn't required Otari, would you have continued using Otari? Why or why not?**
 TODO: your answer. Worth mentioning: one key across three labs' models, and sandboxed Python with pandas and network access at about a cent a call, saved real work here.

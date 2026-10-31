@@ -4,14 +4,21 @@ Paste a statistic. Recount downloads the source data, recalculates the figure in
 
 Built for Mozilla's Developers Wilding hackathon on [Otari](https://otari.ai), using open-weight models only.
 
-| Claim | Claimed | Recounted | Verdict |
-|---|---|---|---|
-| Nigeria's population passed 300 million in 2023 | 300 | 227.9 | Wrong |
-| Brazil's GDP per capita doubled between 2003 and 2013 | 2x | 1.35x | Wrong |
-| Global CO2 emissions per capita fell 20% between 2010 and 2020 | 20% | 4.2% | Wrong |
-| India's population grew 2.5% between 2020 and 2023 | 2.5% | 2.53% | Reproduced |
+Live: https://recount-xi.vercel.app
 
-These are test claims written for the demo, checked against World Bank and Eurostat data. Each run cost $0.03 to $0.07.
+## A public argument, recounted
+
+In May 2025 Akinwumi Adesina, then AfDB president, said Nigeria's GDP per capita fell from $1,847 in 1960 to $824. The Nigerian Presidency replied that the 1960 figure was $93. Recount checked each number against World Bank data:
+
+| Who said it | Claim | Recounted | Verdict |
+|---|---|---|---|
+| Adesina | GDP per capita $1,847 in 1960 | $93 current, $1,455 constant 2015 dollars | Wrong |
+| Adesina | GDP per capita $824 in 2024 | $1,084 | Wrong |
+| Presidency | Per capita income $93 in 1960 | $93.14 | Reproduced |
+| Presidency | GDP $4.2 billion in 1960 | $4.196 billion | Reproduced |
+| Peter Obi, March 2026 | Nigeria's nominal GDP about $250 billion | $252.3 billion | Reproduced |
+
+Same country, same year, a 16-fold gap between current and constant dollars. Each run cost $0.02 to $0.16, about 6 cents on average.
 
 ## How a recount works
 
@@ -25,6 +32,9 @@ These are test claims written for the demo, checked against World Bank and Euros
 In testing, a model wrote a correct script and then reported 2.51 when the script's output said 2.53. So:
 
 - Every number comes from raw sandbox stdout, through Otari's Responses API. Chat Completions doesn't expose code execution output.
+- The analyst never sees the claimed number, only what to measure. Before this it picked a PPP series that happened to match a claim.
+- A skeptic's objection can't downgrade a claim alone. "Misleading" needs a computed figure from the sandbox.
+- Input is checked by an Otari guardrail before any model reads it. Recount serves the check itself at `/api/guardrail/validate`, so Otari answers 403 and no provider is called.
 - A script with no download URL is rejected and retried once.
 - A replay must run identical code and land within 0.5%, or the verdict is unverifiable.
 - `src/lib/verdict.ts` picks the verdict in plain code, with tests.
@@ -62,3 +72,6 @@ npm test
 - Sources are the World Bank and Eurostat through MCP. Other claims depend on web search.
 - The per-recount cap is checked between stages, so a run can overshoot by one stage. A test with a $0.012 cap stopped at $0.022.
 - Results are stored in a local JSON file. Hosted copies show the seeded runs and can't save new ones.
+- Otari's stream can close after several tool calls without a final event. Recount keeps the sandbox output, but that call's cost shows as $0.
+- The public deploy needs an access code to run, because each run spends real credits. `RECOUNT_ACCESS_CODE` sets it.
+- The analyst uses the headline series when a claim doesn't state its basis. Two earlier seeded runs predate blind analysis: nothing about their numbers changes, but they were not run blind.
