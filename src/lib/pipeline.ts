@@ -35,7 +35,7 @@ Answer with JSON only:
 Keep the number as stated: for "1.4 billion" use 1.4 with unit "billion". For "$10,700" use 10700 with unit "USD".`;
 
 const RECOMPUTE_PROMPT = `You measure a statistic from its primary source.
-1. Find the official dataset. Use the data tools first, then web search if available. If the claim doesn't state a basis, use the headline series (GDP per capita means current US$, not PPP). 
+1. Find the official dataset. Use the data tools first. Use web search only if they have no matching series, and prefer published actuals over projections. If the claim doesn't state a basis, use the headline series (GDP per capita means current US$, not PPP). 
 2. Write one self-contained Python script that downloads the data itself from a public URL (the data tools return a source_url you can use), computes the figure in the claim's unit and scale, and prints a last line of exactly: RESULT <number>, unrounded
 3. Run it with code execution, printing the unrounded value. Keep it short: three script runs at most, and stop as soon as RESULT prints. A script with data values typed into it is rejected. Never guess.
 Answer with JSON only:

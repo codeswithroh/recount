@@ -21,11 +21,9 @@ Working in the app now:
 - Multiple models in distinct roles (extractor, analyst, skeptic)
 - Guardrails: Otari blocks injected input with a 403 through Recount's own service at /api/guardrail
 - Open-weight models: deepseek-v4-flash, deepseek-v4-pro, gpt-oss-120b
-
-Built in, but needs a dashboard setting before it counts:
-- Web search and fetch
-- Routing and fallbacks
-- Budgets and spending limits
+- Web search and fetch: paste a URL and Recount reads it (otari_web_fetch); the analyst can search when the data tools have no series
+- Routing and fallbacks: the analyst calls the `recount-analyst` policy, DeepSeek V4 Pro with Kimi K2.7 Code as backup
+- Budgets: the key has a $5 daily ceiling, and each run stops at $0.25
 
 ## Written feedback
 
