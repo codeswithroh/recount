@@ -37,6 +37,7 @@ export type ChatRequest = {
   mcpServers?: Record<string, unknown>[];
   guardrails?: Record<string, unknown>[];
   maxTokens?: number;
+  timeoutMs?: number;
 };
 
 // The hosted gateway's WAF returns a bare 403 for backticked function calls (mozilla-ai/otari#2704).
@@ -51,7 +52,7 @@ export async function chat(req: ChatRequest): Promise<ChatResult> {
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: { "Otari-Key": key, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(280_000),
+    signal: AbortSignal.timeout(req.timeoutMs ?? 280_000),
     body: JSON.stringify({
       model: req.model,
       stream: true,
@@ -141,7 +142,7 @@ async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: C
   const res = await fetch(`${BASE_URL}/responses`, {
     method: "POST",
     headers: { "Otari-Key": key, "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(280_000),
+    signal: AbortSignal.timeout(req.timeoutMs ?? 280_000),
     body: JSON.stringify({
       model: req.model,
       stream: true,

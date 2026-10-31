@@ -23,8 +23,10 @@ test("a missing definition answer does not count against the claim", () => {
   assert.equal(verdict(analysis, rest as Challenge), "reproduced");
 });
 
-test("matching number with another definition is misleading", () => {
-  assert.equal(verdict(analysis, { ...challenge, definition_match: false }), "misleading");
+test("an objection needs a computed rival figure to downgrade a match", () => {
+  assert.equal(verdict(analysis, { ...challenge, definition_match: false }), "reproduced");
+  const alternatives = [{ label: "real terms", value: 1.1 }];
+  assert.equal(verdict(analysis, { ...challenge, definition_match: false, alternatives }), "misleading");
 });
 
 test("value that only matches an alternative reading is misleading", () => {

@@ -26,8 +26,12 @@ export function decideVerdict(
 
   const shown = `${Number(analysis.value.toPrecision(4))} ${claim.unit}`.trim();
   if (matches(analysis.value)) {
-    return challenge.definition_match === false
-      ? { verdict: "misleading", reason: `The number matches, but measures something else.` }
+    // A skeptic's objection alone stays a caveat. Downgrading takes a computed figure that disagrees.
+    const rival = challenge.alternatives.find(
+      (alt) => alt.value !== null && Math.abs(alt.value - analysis.value!) > Math.abs(analysis.value!) * 0.1,
+    );
+    return challenge.definition_match === false && rival
+      ? { verdict: "misleading", reason: `Matches one basis only. ${rival.label} gives ${Number(rival.value!.toPrecision(4))}.` }
       : { verdict: "reproduced", reason: `Source data gives ${shown}.` };
   }
   const alternative = challenge.alternatives.find((alt) => matches(alt.value));

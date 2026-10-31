@@ -45,8 +45,8 @@ If no primary data exists, set found_data to false.`;
 const REPLAY_PROMPT = `Run the user's Python script once with code execution, exactly as given. Do not change it. Then answer with the word done.`;
 
 const CHALLENGE_PROMPT = `You are checking another analyst's recalculation. Assume it may be wrong.
-1. Decide if the script measures the same thing as the claim: same population, geography, period, and basis (nominal or real, gross or net, per capita or total).
-2. Pick up to three other reasonable readings of the claim (another base year, another series, real instead of nominal). Compute them in one Python script from the same source, in the claim's unit, printing one line each: ALT <short label> = <number>
+1. Decide if the script measures what the claim says. Set definition_match to false only if the claim's own wording points to a different population, geography, period or basis than the script used. Ordinary loose wording, such as income for GDP per capita, is true. Put caveats in objections.
+2. Always run one Python script that computes two or three other reasonable readings from the same source (constant dollars instead of current, another base year, another series), in the claim's unit, printing one line each: ALT <short label> = <number>
 Answer with JSON only:
 {"definition_match": boolean, "objections": ["short sentences"]}`;
 
@@ -62,6 +62,10 @@ const alternativesFrom = (runs: CodeRun[]) =>
   );
 
 class OverBudget extends Error {}
+class OverTime extends Error {}
+
+// Vercel ends a function at 300s, so a run stops itself first and still returns a report.
+const RUN_LIMIT_MS = 270_000;
 
 export async function runRecount(input: string, emit: (event: RecountEvent) => void): Promise<Recount> {
   const recount: Recount = {
@@ -79,6 +83,9 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
     budgetUsd: budgetUsd(),
   };
 
+  const deadline = Date.now() + RUN_LIMIT_MS;
+  const timeLeft = () => deadline - Date.now();
+
   const stage = async <T extends ChatResult>(
     name: StageName,
     role: string,
@@ -87,6 +94,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
     call: () => Promise<T>,
   ): Promise<T> => {
     if (recount.costUsd >= recount.budgetUsd) throw new OverBudget();
+    if (timeLeft() < 15_000) throw new OverTime();
     emit({ type: "stage_start", stage: name, role, model });
     const result = await call();
     const run: StageRun = {
@@ -119,6 +127,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
         system: EXTRACT_PROMPT,
         user: input,
         maxTokens: 800,
+        timeoutMs: timeLeft(),
         tools: isUrl ? [{ type: "otari_web_fetch" }] : [],
         guardrails: guardrails(),
       }),
@@ -137,6 +146,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
             system: RECOMPUTE_PROMPT,
             user: `Claim: ${JSON.stringify(recount.claim)}${extra}`,
             maxTokens: 4000,
+            timeoutMs: timeLeft(),
             mcpServers: servers,
             tools: web
               ? [
@@ -163,7 +173,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
     if (recount.analysis.found_data) {
       const script = recount.analysis.script;
       const replay = await stage("replay", "Replayer", extractor, ["code execution"], () =>
-        respond({ model: extractor, system: REPLAY_PROMPT, user: script, maxTokens: 3000 }),
+        respond({ model: extractor, system: REPLAY_PROMPT, user: script, maxTokens: 3000, timeoutMs: timeLeft() }),
       );
       const rerun = replay.codeRuns.find((run) => run.code.trim() === script.trim()) ?? replay.codeRuns[0];
 
@@ -173,6 +183,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
           system: CHALLENGE_PROMPT,
           user: `Claim: ${JSON.stringify(recount.claim)}\nAnalyst method: ${recount.analysis?.method}\nAnalyst script:\n${script}`,
           maxTokens: 4000,
+          timeoutMs: timeLeft(),
         }),
       );
       const review = parseJson<Pick<Challenge, "definition_match" | "objections">>(challenged.content);
@@ -192,6 +203,9 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
     if (error instanceof OtariError && error.isGuardrail) {
       recount.status = "blocked";
       recount.reason = "Otari refused this input before any model read it: it contains instructions for the pipeline.";
+    } else if (error instanceof OverTime || (error instanceof DOMException && error.name === "TimeoutError")) {
+      recount.status = "failed";
+      recount.reason = "The run hit the time limit before a verdict.";
     } else if (error instanceof OverBudget || (error instanceof OtariError && error.isBudget)) {
       recount.status = "over_budget";
       recount.reason = `Stopped at the $${recount.budgetUsd.toFixed(2)} cap.`;

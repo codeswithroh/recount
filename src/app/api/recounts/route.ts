@@ -32,7 +32,10 @@ export async function POST(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: RecountEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      // Long stages send nothing for minutes, and an idle connection gets dropped.
+      const heartbeat = setInterval(() => controller.enqueue(encoder.encode("\n")), 15_000);
       const recount = await runRecount(text, send);
+      clearInterval(heartbeat);
       await saveRecount(recount);
       send({ type: "done", recount });
       controller.close();
