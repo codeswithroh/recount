@@ -1,17 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f4f3ef;
+  --bg: #f5f6f8;
   --card: #ffffff;
-  --ink: #1b1d22;
-  --muted: #6c6f76;
-  --line: #e6e4dd;
-  --accent: #d9481c;
-  --accent-soft: #fbe9e2;
-  --good: #1f8a5b;
-  --warn: #c98a10;
-  --bad: #c5303f;
-  --none: #8c8f96;
+  --ink: #101828;
+  --muted: #667085;
+  --faint: #98a2b3;
+  --line: #e9ebf0;
+  --accent: #2563eb;
+  --accent-soft: #e9f0ff;
+  --good: #0e9f5a;
+  --good-soft: #e3f6ec;
+  --warn: #dd8500;
+  --warn-soft: #fdf1da;
+  --bad: #e03e45;
+  --bad-soft: #fde9ea;
+  --none: #8a94a6;
+  --none-soft: #eff1f4;
 }
 
 @theme inline {
@@ -26,6 +31,11 @@
   --color-warn: var(--warn);
   --color-bad: var(--bad);
   --color-none: var(--none);
+  --color-faint: var(--faint);
+  --color-good-soft: var(--good-soft);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad-soft: var(--bad-soft);
+  --color-none-soft: var(--none-soft);
   --font-sans: var(--font-body);
   --font-mono: var(--font-code);
 }
@@ -38,6 +48,58 @@ body {
 
 .card {
   background: var(--card);
+  border: 1px solid var(--line);
   border-radius: 16px;
-  box-shadow: 0 1px 2px rgb(27 29 34 / 5%), 0 8px 24px rgb(27 29 34 / 4%);
+}
+
+.display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  letter-spacing: -0.035em;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.shimmer {
+  animation: shimmer 1.4s ease-in-out infinite;
+  background: var(--none-soft);
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+}
+
+.rise {
+  animation: rise 0.25s ease-out;
+}
+
+.slide {
+  animation: slide 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .slide,
+  .shimmer {
+    animation: none;
+  }
 }

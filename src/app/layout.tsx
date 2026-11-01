@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { Instrument_Sans, JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
 
 const body = Instrument_Sans({ subsets: ["latin"], variable: "--font-body" });
+const display = Sora({ subsets: ["latin"], variable: "--font-display" });
 const code = JetBrains_Mono({ subsets: ["latin"], variable: "--font-code" });
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${body.variable} ${code.variable}`}>
+    <html lang="en" className={`${body.variable} ${code.variable} ${display.variable}`}>
       <body>{children}</body>
     </html>
   );
