@@ -5,6 +5,14 @@ import type { RecountEvent } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+// One stray error must not take down every run sharing this process.
+const marked = globalThis as { crashWatch?: boolean };
+if (!marked.crashWatch) {
+  marked.crashWatch = true;
+  process.on("uncaughtException", (error) => console.error("uncaught", error));
+  process.on("unhandledRejection", (error) => console.error("unhandled rejection", error));
+}
+
 export async function GET() {
   return Response.json({
     recounts: await listRecounts(),
