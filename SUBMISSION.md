@@ -6,7 +6,7 @@ Reply on the existing email thread with marcus+wilding@mozilla.org before the de
 - **Otari.ai email:** rohitpurkait001@gmail.com
 - **One line:** Re-runs the maths behind published statistics and shows whether each number holds up, with the code attached.
 - **Repository:** https://github.com/codeswithroh/recount
-- **Live app:** https://recount-xi.vercel.app (give judges the access code from `.env.local` by email, not in the repo)
+- **Live app:** https://recount-xi.vercel.app (open to everyone, no sign-in or code)
 - **Branch:** devs-wilding
 - **First Otari commit:** https://github.com/codeswithroh/recount/commit/ee0e525edd2c92c5ef582c090c344d6ff9fd987e
 - **PRs or issues on the Otari repo:** TODO
