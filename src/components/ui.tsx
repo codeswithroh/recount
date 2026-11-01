@@ -119,3 +119,15 @@ export function Card({
     </section>
   );
 }
+
+// The R's leg is the tally strike: the stroke you make when a count gets corrected.
+export function Logo({ className = "size-8" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-hidden>
+      <rect width="64" height="64" rx="16" fill="#101828" />
+      <path d="M21 50V14.5h13.5a12 12 0 0 1 0 24H21" fill="none" stroke="#fff" strokeWidth="8.5" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M36.5 40.5 45 50.5" stroke="#101828" strokeWidth="13" strokeLinecap="round" />
+      <path d="M36.5 40.5 45 50.5" stroke="#4f8dff" strokeWidth="8.5" strokeLinecap="round" />
+    </svg>
+  );
+}

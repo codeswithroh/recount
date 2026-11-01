@@ -18,7 +18,7 @@ import {
 import type { Recount, RecountEvent } from "@/lib/types";
 import { Composer } from "./Composer";
 import { Report } from "./Report";
-import { usd } from "./ui";
+import { Logo, usd } from "./ui";
 import { Claims, Method, Overview, Pipeline, Sources, Spend, STAGES, type Config, type Live } from "./views";
 
 type View = "Overview" | "Claims" | "Sources" | "Spend" | "Pipeline" | "Method";
@@ -177,7 +177,7 @@ export function Dashboard() {
     <div className="min-h-screen md:grid md:grid-cols-[232px_1fr]">
       <aside className="hidden border-r border-line bg-card md:sticky md:top-0 md:flex md:h-screen md:flex-col md:px-3 md:py-4">
         <Link href="/" className="flex items-center gap-2.5 px-2.5 pb-5">
-          <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-white">R</span>
+          <Logo className="size-8" />
           <span>
             <span className="block text-sm font-bold leading-tight">Recount</span>
             <span className="block text-[11px] text-muted">Statistics, re-run</span>
