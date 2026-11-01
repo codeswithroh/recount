@@ -151,10 +151,10 @@ export function Dashboard() {
       let buffer = "";
       let finished = false;
       for (;;) {
-        // The server sends a heartbeat every 15s, so 45s of silence means the run is gone.
+        // Delivery can stall for over a minute while the server works, so only long silence counts as lost.
         let timer: ReturnType<typeof setTimeout> | undefined;
         const silence = new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error(lost)), 45_000);
+          timer = setTimeout(() => reject(new Error(lost)), 150_000);
         });
         const { value, done } = await Promise.race([reader.read(), silence]).finally(() => clearTimeout(timer));
         if (done) {
@@ -164,7 +164,7 @@ export function Dashboard() {
         buffer += value;
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
-        for (const line of lines.filter(Boolean)) {
+        for (const line of lines.filter((item) => item.trim())) {
           const event = JSON.parse(line) as RecountEvent;
           if (event.type === "stage_start") {
             reached = STAGES.find((stage) => stage.name === event.stage)?.label ?? reached;
@@ -206,8 +206,8 @@ export function Dashboard() {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "The run failed.";
-      // One silent restart, because a dropped connection is not the reader's problem to solve.
-      again = message === lost && attempt === 1;
+      // A cut connection is not the reader's problem to solve, so the run restarts by itself.
+      again = (message === lost || error instanceof TypeError) && attempt < 3;
       if (!again) {
         setRunError(`Stopped during ${reached}. ${message}`);
         setComposing(true);

@@ -29,13 +29,15 @@ export async function POST(request: Request) {
   if (text.length > 2000) return Response.json({ error: "Keep it under 2,000 characters." }, { status: 400 });
 
   const encoder = new TextEncoder();
+  // Something between here and the browser can sit on small writes for over a minute. Padding pushes them through.
+  const padding = `${" ".repeat(8192)}\n`;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let closed = false;
   const stream = new ReadableStream({
     async start(controller) {
       // A reader can leave at any moment, and writing to a closed stream from a timer would throw uncaught.
       const write = (text: string) => {
-        if (!closed) controller.enqueue(encoder.encode(text));
+        if (!closed) controller.enqueue(encoder.encode(text + padding));
       };
       const send = (event: RecountEvent) => write(`${JSON.stringify(event)}\n`);
       send({ type: "activity", text: "Connected" });
