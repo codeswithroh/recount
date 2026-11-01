@@ -120,14 +120,13 @@ export function Card({
   );
 }
 
-// The R's leg is the tally strike: the stroke you make when a count gets corrected.
+// Three solid shapes for the three models that check each other: stem, bowl and leg.
 export function Logo({ className = "size-8" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <rect width="64" height="64" rx="16" fill="#101828" />
-      <path d="M21 50V14.5h13.5a12 12 0 0 1 0 24H21" fill="none" stroke="#fff" strokeWidth="8.5" strokeLinejoin="round" strokeLinecap="round" />
-      <path d="M36.5 40.5 45 50.5" stroke="#101828" strokeWidth="13" strokeLinecap="round" />
-      <path d="M36.5 40.5 45 50.5" stroke="#4f8dff" strokeWidth="8.5" strokeLinecap="round" />
+    <svg viewBox="10 6 44 52" className={className} aria-hidden>
+      <rect x="15" y="10" width="13" height="44" rx="1.5" fill="#101828" />
+      <path d="M31 10h6.5a11.5 11.5 0 0 1 0 23H31z" fill="#2563eb" />
+      <path d="M31 36a18 18 0 0 1 18 18H31z" fill="#101828" />
     </svg>
   );
 }
