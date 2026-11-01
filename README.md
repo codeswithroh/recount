@@ -26,7 +26,7 @@ Built for Mozilla's Developers Wilding hackathon on [Otari](https://otari.ai), u
 
 ## Preview
 
-A real run on the live site, sped up about 2.5×. Each step reports what it is doing as it happens.
+A real run on the live site, sped up about 3×. Each step reports what it is doing as it happens.
 
 <p align="center">
   <img src="docs/live-run.gif" alt="A live recount moving through Extract, Recompute, Replay and Challenge, then opening the report" width="100%">
