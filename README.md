@@ -73,5 +73,5 @@ npm test
 - The per-recount cap is checked between stages, so a run can overshoot by one stage. A test with a $0.012 cap stopped at $0.022.
 - Results are stored in a local JSON file. Hosted copies show the seeded runs and can't save new ones.
 - Otari's stream can close after several tool calls without a final event. Recount keeps the sandbox output, but that call's cost shows as $0.
-- The public deploy needs an access code to run, because each run spends real credits. `RECOUNT_ACCESS_CODE` sets it.
+- The public deploy is open to run. Each run spends real credits, so a $0.25 cap per run and a $5 daily ceiling on the key limit the cost. Set `RECOUNT_ACCESS_CODE` to require a code.
 - The analyst uses the headline series when a claim doesn't state its basis. Six of the nine seeded runs predate blind analysis, so the analyst saw the claimed number in those.
