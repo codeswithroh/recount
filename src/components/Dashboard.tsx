@@ -126,12 +126,14 @@ export function Dashboard() {
     };
   }, [live]);
 
-  const run = async (text: string) => {
+  const run = async (text: string, attempt = 1): Promise<void> => {
     setRunError("");
     setNotice(null);
     // Extract is marked as running straight away, so the dialog is never blank while the server wakes up.
-    setLive({ input: text, active: "extract", done: [], model: "", seconds: 0, stageStart: 0, notes: { extract: "Connecting" }, ready: false });
+    setLive({ input: text, active: "extract", done: [], model: "", seconds: 0, stageStart: 0, notes: { extract: attempt === 1 ? "Connecting" : "The connection dropped. Starting again" }, ready: false });
     let reached: string = "Extract";
+    let again = false;
+    const lost = "The connection dropped before a verdict. Try again.";
     try {
       localStorage.setItem("recount-code", code);
     } catch {}
@@ -148,7 +150,6 @@ export function Dashboard() {
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let buffer = "";
       let finished = false;
-      const lost = "The connection dropped before a verdict. Try again.";
       for (;;) {
         // The server sends a heartbeat every 15s, so 45s of silence means the run is gone.
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -205,11 +206,16 @@ export function Dashboard() {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "The run failed.";
-      setRunError(`Stopped during ${reached}. ${message}`);
-      setComposing(true);
+      // One silent restart, because a dropped connection is not the reader's problem to solve.
+      again = message === lost && attempt === 1;
+      if (!again) {
+        setRunError(`Stopped during ${reached}. ${message}`);
+        setComposing(true);
+      }
     } finally {
-      setLive(null);
+      if (!again) setLive(null);
     }
+    if (again) return run(text, 2);
   };
 
   const list = useMemo(() => recounts ?? [], [recounts]);

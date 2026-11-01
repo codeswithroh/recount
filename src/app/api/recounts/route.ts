@@ -29,17 +29,27 @@ export async function POST(request: Request) {
   if (text.length > 2000) return Response.json({ error: "Keep it under 2,000 characters." }, { status: 400 });
 
   const encoder = new TextEncoder();
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  let closed = false;
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (event: RecountEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
-      // Long stages send nothing for minutes, and an idle connection gets dropped.
+      // A reader can leave at any moment, and writing to a closed stream from a timer would throw uncaught.
+      const write = (text: string) => {
+        if (!closed) controller.enqueue(encoder.encode(text));
+      };
+      const send = (event: RecountEvent) => write(`${JSON.stringify(event)}\n`);
       send({ type: "activity", text: "Connected" });
-      const heartbeat = setInterval(() => controller.enqueue(encoder.encode("\n")), 15_000);
+      // Long stages send nothing for minutes, and an idle connection gets dropped.
+      heartbeat = setInterval(() => write("\n"), 15_000);
       const recount = await runRecount(text, send);
       clearInterval(heartbeat);
       await saveRecount(recount);
       send({ type: "done", recount });
-      controller.close();
+      if (!closed) controller.close();
+    },
+    cancel() {
+      closed = true;
+      clearInterval(heartbeat);
     },
   });
   // Compression holds small events back until a buffer fills, so progress would arrive all at once.
