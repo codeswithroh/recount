@@ -38,6 +38,7 @@ export type ChatRequest = {
   guardrails?: Record<string, unknown>[];
   maxTokens?: number;
   deadline?: number;
+  onActivity?: (text: string) => void;
 };
 
 // The hosted gateway's WAF returns a bare 403 for backticked function calls (mozilla-ai/otari#2704).
@@ -54,6 +55,7 @@ async function withRetries<T>(req: ChatRequest, call: () => Promise<T>): Promise
     } catch (error) {
       const outOfTime = req.deadline !== undefined && req.deadline - Date.now() < 15_000;
       if (!canRetry(error) || attempt === 3 || outOfTime) throw error;
+      req.onActivity?.(`The provider stumbled. Trying again (${attempt + 1} of 3)`);
     }
   }
 }
@@ -139,6 +141,16 @@ type ResponseItem = {
   content?: { type: string; text?: string }[];
 };
 
+// Names the tool a model just reached for, so the page can show what is happening inside a stage.
+function activityFor(item: { type?: string; name?: string; server_label?: string }) {
+  const type = item.type ?? "";
+  if (type.includes("code_interpreter")) return "Running Python in the sandbox";
+  if (type.includes("web_search")) return "Searching the web";
+  if (type.includes("web_fetch")) return "Reading a web page";
+  if (type.includes("mcp")) return "Looking up official data";
+  return "";
+}
+
 // Chat Completions hides code execution. Responses returns the code and raw stdout of every
 // sandbox call, so verdict numbers can be read from the sandbox instead of a model's prose.
 export const respond = (req: ChatRequest) => withRetries(req, () => respondOnce(req));
@@ -180,13 +192,28 @@ async function respondOnce(req: ChatRequest): Promise<ChatResult & { codeRuns: C
   let lastEvent = "";
   let buffer = "";
   const decoder = new TextDecoder();
+  let told = "";
+  const tell = (text: string) => {
+    if (text !== told) req.onActivity?.(text);
+    told = text;
+  };
 
   const handleLine = (line: string) => {
     if (!line.startsWith("data: ") || line === "data: [DONE]") return;
     const event = JSON.parse(line.slice(6));
     lastEvent = event.type ?? lastEvent;
+    if (event.type === "response.reasoning_text.delta") tell("Planning the next step");
+    if (event.type === "response.output_text.delta") tell("Writing up the answer");
     if (event.type === "response.completed" || event.type === "response.incomplete") final = event.response;
-    if (event.type === "response.output_item.done") items.push(event.item);
+    if (event.type === "response.output_item.added") {
+      const text = activityFor(event.item ?? {});
+      if (text) tell(text);
+    }
+    if (event.type === "response.output_item.done") {
+      items.push(event.item);
+      const printed = event.item?.outputs?.some((out: { logs?: string }) => /^(RESULT|ALT)\s/m.test(out.logs ?? ""));
+      if (printed) tell("The sandbox printed a result");
+    }
     if (event.type === "response.failed" || event.type === "error")
       failure = event.response?.error?.message ?? event.message ?? "stream failed";
   };

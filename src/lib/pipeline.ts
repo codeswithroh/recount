@@ -141,6 +141,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
     return result;
   };
 
+  const say = (text: string) => emit({ type: "activity", text });
   const { extractor, analyst, skeptic } = models();
   const web = webEnabled();
   const servers = dataServers();
@@ -154,11 +155,13 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
         user: input,
         maxTokens: 800,
         deadline,
+        onActivity: say,
         tools: isUrl ? [{ type: "otari_web_fetch" }] : [],
         guardrails: guardrails(),
       }),
     );
     recount.claim = parseJson<Claim>(extracted.content);
+    say(`Checking ${[recount.claim.metric, recount.claim.geography, recount.claim.period].filter(Boolean).join(", ")}`);
 
     // The analyst never sees the claimed number, so it can't shop for a series that agrees.
     const { metric, unit, geography, period } = recount.claim;
@@ -176,6 +179,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
             user: `Measure: ${JSON.stringify(blind)}${extra}`,
             maxTokens: 4000,
             deadline,
+            onActivity: say,
             mcpServers: servers,
             tools: web
               ? [
@@ -187,8 +191,10 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
       );
     const usable = (run: CodeRun) => resultFrom(run) !== null && /https?:\/\//.test(run.code);
     let worked = await recompute("");
-    if (!worked.codeRuns.some(usable))
+    if (!worked.codeRuns.some(usable)) {
+      say("That script did not download its data. Asking again");
       worked = await recompute("\nYour last script did not download its data from a URL. Do that this time.");
+    }
     const lastRun = [...worked.codeRuns].reverse().find(usable);
     const report = reportFrom(worked.content, lastRun, recount.claim);
     recount.analysis = {
@@ -199,16 +205,22 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
       stdout: lastRun?.logs ?? "",
     };
 
+    say(recount.analysis.value === null ? "No usable source figure found" : `Source figure: ${Number(recount.analysis.value.toPrecision(6))}`);
+
     if (recount.analysis.found_data) {
       const script = recount.analysis.script;
       const sameCode = (run: CodeRun) => run.code.replace(/\s+/g, "") === script.replace(/\s+/g, "");
       const replayOnce = () =>
         stage("replay", "Replayer", extractor, ["code execution"], () =>
-          respond({ model: extractor, system: REPLAY_PROMPT, user: script, maxTokens: 3000, deadline }),
+          respond({ model: extractor, system: REPLAY_PROMPT, user: script, maxTokens: 3000, deadline, onActivity: say }),
         );
       let replay = await replayOnce();
-      if (!replay.codeRuns.some(sameCode)) replay = await replayOnce();
+      if (!replay.codeRuns.some(sameCode)) {
+        say("The script came back changed. Running it again");
+        replay = await replayOnce();
+      }
       const rerun = replay.codeRuns.find(sameCode) ?? replay.codeRuns[0];
+      say(resultFrom(rerun) === recount.analysis.value ? "Same script, same number" : "The replay gave a different number");
 
       const challenged = await stage("challenge", "Skeptic", skeptic, ["code execution"], () =>
         respond({
@@ -217,6 +229,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
           user: `Claim: ${JSON.stringify(recount.claim)}\nAnalyst method: ${recount.analysis?.method}\nAnalyst script:\n${script}`,
           maxTokens: 4000,
           deadline,
+          onActivity: say,
         }),
       );
       const review = reviewFrom(challenged.content);
@@ -232,6 +245,7 @@ export async function runRecount(input: string, emit: (event: RecountEvent) => v
       };
     }
 
+    if (recount.challenge) say(`${recount.challenge.alternatives.length} other readings computed`);
     Object.assign(recount, decideVerdict(recount.claim, recount.analysis, recount.challenge));
   } catch (error) {
     if (error instanceof OtariError && error.isGuardrail) {

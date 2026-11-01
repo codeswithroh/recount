@@ -65,4 +65,5 @@ export type Recount = {
 export type RecountEvent =
   | { type: "stage_start"; stage: StageName; role: string; model: string }
   | { type: "stage_done"; run: StageRun }
+  | { type: "activity"; text: string }
   | { type: "done"; recount: Recount };

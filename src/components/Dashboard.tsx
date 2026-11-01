@@ -17,8 +17,10 @@ import {
 } from "lucide-react";
 import type { Recount, RecountEvent } from "@/lib/types";
 import { Composer } from "./Composer";
+import { Toast, type Notice } from "./RunProgress";
+import { MiniRun } from "./RunProgress";
 import { Report } from "./Report";
-import { Logo, usd } from "./ui";
+import { claimLabel, Logo, OUTCOMES, outcomeOf, usd } from "./ui";
 import { Claims, Method, Overview, Pipeline, Sources, Spend, STAGES, type Config, type Live } from "./views";
 
 type View = "Overview" | "Claims" | "Sources" | "Spend" | "Pipeline" | "Method";
@@ -65,6 +67,9 @@ export function Dashboard() {
   const [live, setLive] = useState<Live | null>(null);
   const [runError, setRunError] = useState("");
   const [open, setOpen] = useState<Recount | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const composingRef = useRef(false);
+  composingRef.current = composing;
   const searchRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -112,9 +117,21 @@ export function Dashboard() {
     return () => clearInterval(timer);
   }, [Boolean(live)]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!live) return;
+    const stage = STAGES.find((item) => item.name === live.active);
+    document.title = live.ready ? "Verdict ready · Recount" : `${stage?.label ?? "Working"} ${live.seconds}s · Recount`;
+    return () => {
+      document.title = "Recount";
+    };
+  }, [live]);
+
   const run = async (text: string) => {
     setRunError("");
-    setLive({ active: null, done: [], model: "", seconds: 0 });
+    setNotice(null);
+    // Extract is marked as running straight away, so the dialog is never blank while the server wakes up.
+    setLive({ input: text, active: "extract", done: [], model: "", seconds: 0, stageStart: 0, notes: { extract: "Connecting" }, ready: false });
+    let reached: string = "Extract";
     try {
       localStorage.setItem("recount-code", code);
     } catch {}
@@ -148,21 +165,47 @@ export function Dashboard() {
         buffer = lines.pop() ?? "";
         for (const line of lines.filter(Boolean)) {
           const event = JSON.parse(line) as RecountEvent;
-          if (event.type === "stage_start")
-            setLive((state) => state && { ...state, active: event.stage, model: event.model });
+          if (event.type === "stage_start") {
+            reached = STAGES.find((stage) => stage.name === event.stage)?.label ?? reached;
+            setLive(
+              (state) =>
+                state && {
+                  ...state,
+                  active: event.stage,
+                  model: event.model,
+                  stageStart: state.seconds,
+                  notes: { ...state.notes, [event.stage]: state.active === event.stage ? state.notes[event.stage] : STAGES.find((stage) => stage.name === event.stage)?.first },
+                },
+            );
+          }
+          if (event.type === "activity")
+            setLive((state) => state && (state.active ? { ...state, notes: { ...state.notes, [state.active]: event.text } } : state));
           if (event.type === "stage_done")
-            setLive((state) => state && { ...state, active: null, done: [...state.done, event.run] });
+            setLive((state) => state && { ...state, done: [...state.done, event.run] });
           if (event.type === "done") {
             finished = true;
-            setRecounts((list) => [event.recount, ...(list ?? [])]);
-            setComposing(false);
-            openReport(event.recount);
+            const { recount } = event;
+            setRecounts((list) => [recount, ...(list ?? [])]);
             setInput("");
+            setLive((state) => state && { ...state, active: null, ready: true });
+            await new Promise((resolve) => setTimeout(resolve, 900));
+            if (composingRef.current) {
+              setComposing(false);
+              openReport(recount);
+            } else {
+              setNotice({
+                title: OUTCOMES[outcomeOf(recount)].label,
+                text: claimLabel(recount),
+                color: OUTCOMES[outcomeOf(recount)].color,
+                onOpen: () => openReport(recount),
+              });
+            }
           }
         }
       }
     } catch (error) {
-      setRunError(error instanceof Error ? error.message : "The run failed.");
+      const message = error instanceof Error ? error.message : "The run failed.";
+      setRunError(`Stopped during ${reached}. ${message}`);
       setComposing(true);
     } finally {
       setLive(null);
@@ -239,7 +282,7 @@ export function Dashboard() {
               className="flex h-9 items-center gap-2 rounded-lg bg-accent-soft px-3 text-sm font-semibold text-accent"
             >
               <Loader2 className="size-4 animate-spin" aria-hidden />
-              <span className="hidden sm:inline">{liveStage?.label ?? "Starting"}</span>
+              <span className="hidden sm:inline">{live.ready ? "Done" : (liveStage?.label ?? "Working")}</span>
               <span className="num">{live.seconds}s</span>
             </button>
           )}
@@ -295,6 +338,8 @@ export function Dashboard() {
         ))}
       </nav>
 
+      {live && !composing && <MiniRun live={live} onOpen={() => setComposing(true)} />}
+      {notice && <Toast notice={notice} onClose={() => setNotice(null)} />}
       {composing && (
         <Composer
           config={config}

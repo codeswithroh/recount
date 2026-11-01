@@ -104,6 +104,75 @@ body {
   }
 }
 
+/* Run progress */
+.halo {
+  animation: halo 1.6s ease-out infinite;
+}
+
+@keyframes halo {
+  from {
+    box-shadow: 0 0 0 0 rgb(37 99 235 / 45%);
+  }
+  to {
+    box-shadow: 0 0 0 10px rgb(37 99 235 / 0%);
+  }
+}
+
+.bar-sheen {
+  animation: bar-sheen 1.5s linear infinite;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 55%), transparent);
+}
+
+@keyframes bar-sheen {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.note {
+  animation: rise 0.3s ease-out;
+}
+
+.tick-in {
+  animation: tick-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes tick-in {
+  from {
+    transform: scale(0.3);
+  }
+}
+
+.dots::after {
+  animation: dots 1.4s steps(4) infinite;
+  content: "";
+}
+
+@keyframes dots {
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halo,
+  .bar-sheen,
+  .note,
+  .tick-in,
+  .dots::after {
+    animation: none;
+  }
+}
+
 /* Landing page motion. Everything starts when a Reveal gains .in, so charts run as they scroll into view. */
 .reveal {
   opacity: 0;

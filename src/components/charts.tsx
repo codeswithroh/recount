@@ -74,12 +74,12 @@ export function GapPlot({ recounts, onOpen }: { recounts: Recount[]; onOpen?: (r
   const reach = Math.max(1, ...rows.map((row) => Math.abs(row.shift))) * 1.08;
   return (
     <div className="px-5 pb-4 pt-3">
-      <div className="mb-1 grid grid-cols-[minmax(0,108px)_1fr_64px] gap-3 text-[11px] text-faint sm:grid-cols-[minmax(0,190px)_1fr_72px]">
+      <div className="mb-1 grid grid-cols-[minmax(0,1fr)_minmax(110px,1.4fr)_64px] gap-3 text-[11px] text-faint sm:grid-cols-[minmax(0,1fr)_minmax(140px,1.6fr)_72px]">
         <span />
         <div className="flex justify-between">
-          <span>Too low</span>
+          <span>Low</span>
           <span className="font-semibold text-muted">Source</span>
-          <span>Too high</span>
+          <span>High</span>
         </div>
         <span />
       </div>
@@ -112,7 +112,7 @@ export function GapPlot({ recounts, onOpen }: { recounts: Recount[]; onOpen?: (r
               </span>
             </>
           );
-          const grid = "grid w-full grid-cols-[minmax(0,108px)_1fr_64px] items-center gap-3 rounded-lg py-0.5 sm:grid-cols-[minmax(0,190px)_1fr_72px]";
+          const grid = "grid w-full grid-cols-[minmax(0,1fr)_minmax(110px,1.4fr)_64px] items-center gap-3 rounded-lg py-0.5 sm:grid-cols-[minmax(0,1fr)_minmax(140px,1.6fr)_72px]";
           return (
             <li key={recount.id}>
               {onOpen ? (

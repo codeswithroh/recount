@@ -49,13 +49,22 @@ export type Config = {
   web: boolean;
 };
 
-export type Live = { active: StageName | null; done: StageRun[]; model: string; seconds: number };
+export type Live = {
+  input: string;
+  active: StageName | null;
+  done: StageRun[];
+  model: string;
+  seconds: number;
+  stageStart: number;
+  notes: Partial<Record<StageName, string>>;
+  ready: boolean;
+};
 
-export const STAGES: { name: StageName; label: string; job: string; role: keyof Config["models"] }[] = [
-  { name: "extract", label: "Extract", job: "Pulls out the number, unit, place and period", role: "extractor" },
-  { name: "recompute", label: "Recompute", job: "Downloads the source and computes it, blind to the claim", role: "analyst" },
-  { name: "replay", label: "Replay", job: "Runs the same script in a fresh sandbox", role: "extractor" },
-  { name: "challenge", label: "Challenge", job: "Tries other series and base years", role: "skeptic" },
+export const STAGES: { name: StageName; label: string; job: string; role: keyof Config["models"]; typical: number; first: string }[] = [
+  { name: "extract", label: "Extract", job: "Pulls out the number, unit, place and period", role: "extractor", typical: 3, first: "Reading the claim" },
+  { name: "recompute", label: "Recompute", job: "Downloads the source and computes it, blind to the claim", role: "analyst", typical: 20, first: "Finding the official series" },
+  { name: "replay", label: "Replay", job: "Runs the same script in a fresh sandbox", role: "extractor", typical: 5, first: "Running the same script again" },
+  { name: "challenge", label: "Challenge", job: "Tries other series and base years", role: "skeptic", typical: 30, first: "Reading the analyst's script" },
 ];
 
 type Open = (recount: Recount) => void;

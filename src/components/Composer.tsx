@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { Check, Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
+import { RunProgress } from "./RunProgress";
 import { usd } from "./ui";
-import { STAGES, type Config, type Live } from "./views";
+import type { Config, Live } from "./views";
 
 const EXAMPLES = [
   "Nigeria's GDP per capita was $1,847 in 1960.",
@@ -49,42 +50,14 @@ export function Composer({
         className="rise w-full max-w-xl rounded-t-2xl bg-card p-5 sm:rounded-2xl"
       >
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold">{live ? "Recounting" : "New recount"}</h2>
+          <h2 className="font-semibold">{live ? (live.ready ? "Verdict ready" : "Recounting") : "New recount"}</h2>
           <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-muted hover:bg-bg">
             <X className="size-4" />
           </button>
         </div>
 
         {live ? (
-          <>
-            <ol className="mt-4 space-y-1" aria-live="polite">
-              {STAGES.map(({ name, label, job }) => {
-                const finished = live.done.findLast((run) => run.stage === name);
-                const active = live.active === name;
-                return (
-                  <li key={name} className={`flex items-center gap-3 rounded-xl p-2.5 ${active ? "bg-accent-soft" : ""}`}>
-                    <span
-                      className={`grid size-7 shrink-0 place-items-center rounded-full ${
-                        finished ? "bg-good-soft text-good" : active ? "bg-accent text-white" : "bg-none-soft text-faint"
-                      }`}
-                    >
-                      {finished ? <Check className="size-4" /> : active ? <Loader2 className="size-4 animate-spin" /> : null}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold">{label}</span>
-                      <span className="block truncate text-xs text-muted">{active ? live.model : job}</span>
-                    </span>
-                    {finished && (
-                      <span className="num text-xs text-muted">
-                        {usd(finished.costUsd)} · {(finished.durationMs / 1000).toFixed(0)}s
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-            <p className="mt-3 text-xs text-muted">Usually about a minute. You can close this; the run carries on.</p>
-          </>
+          <RunProgress live={live} />
         ) : (
           <form
             className="mt-3"

@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     async start(controller) {
       const send = (event: RecountEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       // Long stages send nothing for minutes, and an idle connection gets dropped.
+      send({ type: "activity", text: "Connected" });
       const heartbeat = setInterval(() => controller.enqueue(encoder.encode("\n")), 15_000);
       const recount = await runRecount(text, send);
       clearInterval(heartbeat);
@@ -41,5 +42,13 @@ export async function POST(request: Request) {
       controller.close();
     },
   });
-  return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" } });
+  // Compression holds small events back until a buffer fills, so progress would arrive all at once.
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Cache-Control": "no-store, no-transform",
+      "Content-Encoding": "identity",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }
