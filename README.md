@@ -1,10 +1,61 @@
-# Recount
+<p align="center">
+  <img src="docs/banner.png" alt="Recount: check the number before you repeat it" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://recount-xi.vercel.app"><img src="https://img.shields.io/badge/Live_demo-open-2563eb?style=flat-square" alt="Live demo"></a>
+  <a href="https://recount-xi.vercel.app/app"><img src="https://img.shields.io/badge/Run_a_claim-no_sign--in-101828?style=flat-square" alt="Run a claim, no sign-in"></a>
+  <a href="https://otari.ai"><img src="https://img.shields.io/badge/Built_on-Otari-5a3fd6?style=flat-square" alt="Built on Otari"></a>
+  <img src="https://img.shields.io/badge/Models-open--weight-0e9f5a?style=flat-square" alt="Open-weight models">
+  <img src="https://img.shields.io/badge/About-5¢_a_claim-dd8500?style=flat-square" alt="About 5 cents a claim">
+</p>
+
+<p align="center">
+  <a href="#preview">Preview</a> ·
+  <a href="#a-public-argument-recounted">The story</a> ·
+  <a href="#how-a-recount-works">How it works</a> ·
+  <a href="#why-no-model-reports-the-result">Guarantees</a> ·
+  <a href="#otari-features">Otari features</a> ·
+  <a href="#run-it">Run it</a> ·
+  <a href="#limits">Limits</a>
+</p>
 
 Paste a statistic. Recount downloads the source data, recalculates the figure in a sandbox, and gives you a verdict plus the script.
 
 Built for Mozilla's Developers Wilding hackathon on [Otari](https://otari.ai), using open-weight models only.
 
-Live: https://recount-xi.vercel.app
+## Preview
+
+A real run on the live site, sped up about 2.5×. Each step reports what it is doing as it happens.
+
+<p align="center">
+  <img src="docs/live-run.gif" alt="A live recount moving through Extract, Recompute, Replay and Challenge, then opening the report" width="100%">
+</p>
+
+### Landing page
+
+<img src="docs/landing.png" alt="Recount landing page" width="100%">
+
+### Dashboard
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/overview.png" alt="Overview with the How far off chart and verdict ring"><br><sub><b>Overview.</b> Every claim plotted against its source.</sub></td>
+    <td width="50%"><img src="docs/report.png" alt="Report drawer with claimed and recounted figures"><br><sub><b>Report.</b> Evidence, script and run details.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/claims.png" alt="Claims table with filters"><br><sub><b>Claims.</b> Filter by verdict and search.</sub></td>
+    <td><img src="docs/spend.png" alt="Spend page with cost per run"><br><sub><b>Spend.</b> Each run against the $0.25 cap.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/pipeline.png" alt="Pipeline page with stages and Otari features"><br><sub><b>Pipeline.</b> Stages, models and Otari features.</sub></td>
+    <td align="center">
+      <img src="docs/phone-overview.png" alt="Overview at phone width" width="36%">
+      <img src="docs/phone-report.png" alt="Report at phone width" width="36%"><br>
+      <sub><b>Phone.</b> Every view works at 390px.</sub>
+    </td>
+  </tr>
+</table>
 
 ## A public argument, recounted
 
@@ -22,10 +73,34 @@ Same country, same year, a 16-fold gap between current and constant dollars. Eac
 
 ## How a recount works
 
-1. **Extract** (`deepseek/deepseek-v4-flash`): pulls out the number, unit, place and period.
-2. **Recompute** (`deepseek/deepseek-v4-pro`): finds the series through the MCP data server, then writes and runs a script that downloads it.
-3. **Replay** (`deepseek/deepseek-v4-flash`): runs the same script in a fresh sandbox.
-4. **Challenge** (`openai/gpt-oss-120b`): checks the definition and computes other readings, such as another base year.
+```mermaid
+flowchart LR
+    A[Claim or URL] --> G{Guardrail}
+    G -- injected instructions --> X[Blocked with a 403]
+    G -- clean --> E[Extract]
+    E -- metric, place, period --> R[Recompute]
+    D[(World Bank<br>Eurostat)] --> R
+    R -- script --> P[Replay]
+    R -- script --> C[Challenge]
+    P -- stdout --> V[verdict.ts]
+    C -- stdout --> V
+    R -- stdout --> V
+    V --> O[Report with script]
+```
+
+| Step | Model | Job |
+|---|---|---|
+| Extract | `deepseek/deepseek-v4-flash` | Pulls out the number, unit, place and period. |
+| Recompute | `deepseek/deepseek-v4-pro`, with `moonshotai/kimi-k2.7-code` as backup | Finds the series through the MCP data server, then writes and runs a script that downloads it. |
+| Replay | `deepseek/deepseek-v4-flash` | Runs the same script in a fresh sandbox. |
+| Challenge | `openai/gpt-oss-120b` | Checks the definition and computes other readings, such as another base year. |
+
+| Verdict | Rule |
+|---|---|
+| Reproduced | Within 2% of the source, or 5% if the claim says about. |
+| Misleading | It only matches another reading, or the definition differs and a computed rival sits over 10% away. |
+| Wrong | The source gives another number on every reading. |
+| Unverifiable | No primary data, or the script did not replay the same. |
 
 ## Why no model reports the result
 
@@ -39,7 +114,17 @@ In testing, a model wrote a correct script and then reported 2.51 when the scrip
 - A replay must run identical code and land within 0.5%, or the verdict is unverifiable.
 - `src/lib/verdict.ts` picks the verdict in plain code, with tests.
 
-Only one judgement comes from a model: whether the script measures the same thing as the claim.
+## Otari features
+
+| Feature | How Recount uses it |
+|---|---|
+| Code execution | Every recounted figure comes from the sandbox. |
+| MCP | `POST /api/mcp` serves World Bank and Eurostat series. |
+| Multiple models | Three open-weight models in distinct roles. |
+| Guardrails | Injected input gets a 403 before any model reads it. |
+| Web search and fetch | Reads pasted URLs, and searches when the data tools have no series. |
+| Fallbacks | The `recount-analyst` policy puts Kimi K2.7 Code behind DeepSeek V4 Pro. |
+| Budgets | $5 daily ceiling on the key, on top of Recount's $0.25 cap per run. |
 
 ## Run it
 
@@ -73,5 +158,7 @@ npm test
 - The per-recount cap is checked between stages, so a run can overshoot by one stage. A test with a $0.012 cap stopped at $0.022.
 - Results are stored in a local JSON file. Hosted copies show the seeded runs and can't save new ones.
 - Otari's stream can close after several tool calls without a final event. Recount keeps the sandbox output, but that call's cost shows as $0.
+- A hosted run's connection can be cut partway. The page restarts it by itself, up to twice, so that run takes longer and costs more.
+- Otari's sandbox can refuse work under a burst of runs, and those runs end with no verdict.
 - The public deploy is open to run. Each run spends real credits, so a $0.25 cap per run and a $5 daily ceiling on the key limit the cost. Set `RECOUNT_ACCESS_CODE` to require a code.
 - The analyst uses the headline series when a claim doesn't state its basis. Six of the nine seeded runs predate blind analysis, so the analyst saw the claimed number in those.
